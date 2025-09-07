@@ -2,36 +2,38 @@ import { WebSocket, WebSocketServer } from 'ws';
 import { JWT_SECRET } from '@repo/backend-common/config';
 import jwt, { JwtPayload } from 'jsonwebtoken';
 const wss = new WebSocketServer({ port: 8080 });
+import { prismaClient } from '@repo/db/client';
+
 //state-management using global variable 
 interface User {
-  ws: WebSocket;
-  rooms: string[];
-  userId: string;
+  ws: WebSocket,
+  rooms: string[],
+  userId: string
 }
 
 const users: User[] = [];
 
 
-function checkUser (token:string):string | null{
-  try{
+
+const checkUser = (token: string): string | null => {
+  try {
     const decoded = jwt.verify(token, JWT_SECRET);
 
-  if(typeof decoded == "string") {
-    return null;
-  }
+    // better way to get away from the type error instead of defining it as a jwtPayload in decode
 
-  if(!decoded || !decoded.userId) {
-    
-    return null;
-  }
-  return decoded.userId;
+    if (typeof decoded == "string") {
+      return null;
+    }
 
-  }catch(e)
-  {
+    if (!decoded || !decoded.userId) {
+      return null;
+    }
+    return decoded.userId;
+  } catch (e) {
     return null;
   }
   return null;
-}
+};
 
 wss.on('connection', function connection(ws, request) {
   const url = request.url;
@@ -44,14 +46,14 @@ wss.on('connection', function connection(ws, request) {
 
   const userId = checkUser(token);
 
-  if(!userId == null){
+  if(!userId ){
     ws.close;
-    return null;
+    return ;
   }
 
 
 
-  ws.on('message', function message(data) {
+  ws.on('message', async function message(data) {
       const parsedData = JSON.parse(data as unknown as string);
       
       if (parsedData.type === "join_room") {
@@ -72,6 +74,13 @@ wss.on('connection', function connection(ws, request) {
   
         const roomId = parsedData.roomId;
         const message = parsedData.message;
+
+        await prismaClient.chat.create({
+          data:
+          roomId,
+          message,
+          userId
+        });
 
         users.forEach(user => {
           if (user.rooms.includes(roomId)){
