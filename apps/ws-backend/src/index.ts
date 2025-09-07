@@ -1,9 +1,9 @@
 import { WebSocket, WebSocketServer } from 'ws';
 import { JWT_SECRET } from '@repo/backend-common/config';
 import jwt, { JwtPayload } from 'jsonwebtoken';
-const wss = new WebSocketServer({ port: 8080 });
 import { prismaClient } from '@repo/db/client';
 
+const wss = new WebSocketServer({ port: 8080 });
 //state-management using global variable 
 interface User {
   ws: WebSocket,
@@ -32,7 +32,7 @@ const checkUser = (token: string): string | null => {
   } catch (e) {
     return null;
   }
-  return null;
+ 
 };
 
 wss.on('connection', function connection(ws, request) {
