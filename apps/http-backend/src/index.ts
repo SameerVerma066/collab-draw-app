@@ -124,4 +124,4 @@ app.get("/room/:slug", async (req,res)=> {
         room
     })
 })
-app.listen(3001);
+app.listen(3004);
