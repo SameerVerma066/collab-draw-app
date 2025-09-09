@@ -1,3 +1,5 @@
+import { HTTP_BACKEND } from "@/config";
+import axios from "axios";
 
 type Shape = {
     type : "rect",
@@ -65,4 +67,8 @@ function clearCanvas(existingShapes:Shape[], canvas:HTMLCanvasElement, ctx : Can
             ctx.strokeRect(shape.x,shape.y,shape.width,shape.height);
         }
     })
+}
+
+function getExistingShapes(roomId:string){
+    axios.get(`${HTTP_BACKEND}/chats/{$roomId}`)
 }
