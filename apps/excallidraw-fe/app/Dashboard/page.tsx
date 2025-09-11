@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { useRouter } from "next/navigation";
 import { HTTP_BACKEND } from "@/config";
 
@@ -79,37 +79,58 @@ export default function App() {
     setTimeout(() => setNotification(null), 2500);
   };
 
+  useEffect(() => {
+    const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+    if (!token) { router.push("/Signin"); return; }
+
+    (async () => {
+      try {
+        const res = await fetch(`${HTTP_BACKEND}/my-rooms`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (!res.ok) return;
+        const data = await res.json(); // { rooms: [{ slug, name, createdAt }] }
+        const mapped = (data.rooms || []).map((r: any) => ({
+          id: r.slug,
+          name: r.name,
+          createdAt: new Date(r.createdAt)
+        }));
+        setRooms(mapped);
+      } catch {}
+    })();
+  }, [router]);
+
   const handleCreateRoom = async (e: React.FormEvent) => {
     e.preventDefault();
     const name = newRoomName.trim();
     if (!name) return showNotification('Room name cannot be empty.', 'error');
 
-    const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
-    if (!token) {
-      showNotification('Please sign in first.', 'error');
-      router.push('/Signin');
-      return;
-    }
-
     try {
+      const token = localStorage.getItem("token");
+      if (!token) throw new Error("No auth token. Please sign in.");
+
       const res = await fetch(`${HTTP_BACKEND}/room`, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token ?? ""}`
         },
         body: JSON.stringify({ name })
       });
-      if (!res.ok) throw new Error('Create failed');
-      const data = await res.json(); // { roomId: slug } per your backend
+
+      const text = await res.text(); // read once
+      if (!res.ok) {
+        throw new Error(`Create failed (${res.status}): ${text || "no body"}`);
+      }
+      const data = JSON.parse(text); // safe parse
       const slug = String(data.roomId);
 
       const newRoom: Room = { id: slug, name, createdAt: new Date() };
       setRooms(prev => [newRoom, ...prev]);
-      setNewRoomName('');
-      showNotification(`Room "${name}" created! Slug: ${slug}`, 'success');
-    } catch {
-      showNotification('Failed to create room.', 'error');
+      setNewRoomName("");
+      showNotification(`Room "${name}" created! Slug: ${slug}`, "success");
+    } catch (e: any) {
+      showNotification(e.message || "Failed to create room.", "error");
     }
   };
 

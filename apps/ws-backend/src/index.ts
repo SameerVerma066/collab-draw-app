@@ -82,9 +82,13 @@ wss.on('connection', function connection(ws, request) {
       const roomId = parsedData.roomId;
       const message = parsedData.message;
 
+      const slug = String(parsedData.roomId); // client sends slug
+      const room = await prismaClient.room.findUnique({ where: { slug } });
+      if (!room) return; // or handle error
+
       await prismaClient.chat.create({
         data: {
-          roomId: Number(roomId),
+          roomId: room.id,   // use numeric FK
           message,
           userId
         }

@@ -13,27 +13,33 @@ export function AuthPage({ isSignin }: { isSignin: boolean; }) {
     const [name, setName] = useState(""); // ADD THIS
     const router = useRouter();
 
-    const handleAuth = async () => {
-        try {
-            const endpoint = isSignin ? "signin" : "signup";
-            const payload = isSignin
-                ? { username: email, password }
-                : { username: email, password, name };
+  // Inside AuthPage component
+const handleAuth = async () => {
+    try {
+        const endpoint = isSignin ? "signin" : "signup";
+        const payload = isSignin
+            ? { username: email, password }
+            : { username: email, password, name };
 
-            const { data } = await axios.post(`${HTTP_BACKEND}/${endpoint}`, payload);
+        const res = await axios.post(`${HTTP_BACKEND}/${endpoint}`, payload);
+        const { token } = res.data;
 
-            if (isSignin) {
-                localStorage.setItem("token", data.token); // FIX: setItem
-                router.push("/Dashboard");
-                toast.success("Signed in");
-            } else {
-                toast.success("Signed up",data.token);
-                router.push("/Dashboard");
-            }
-        } catch (e) {
-            toast.error("Authentication failed");
+        if (token) {
+            localStorage.setItem("token", token);
+            router.push("/Dashboard");
+            toast.success("Signed in");
+        } else {
+            // This should not happen with the current backend code,
+            // but is a good practice for robustness.
+            toast.error("Authentication failed: No token received.");
         }
-    };
+    } catch (e: any) {
+        // This block catches errors like "User already exists" (411)
+        // or "Incorrect email/password" (403) from the backend.
+        const errorMessage = e.response?.data?.message || "Authentication failed. Please try again.";
+        toast.error(errorMessage);
+    }
+};
 
     return (
         <div className="w-screen h-screen flex justify-center items-center bg-gray-900 dark:bg-gray-900">

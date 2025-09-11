@@ -89,62 +89,48 @@ app.post("/signin", async (req, res) => {
 })
 
 app.post("/room", middleware, async (req, res) => {
-    const parsedData = CreateRoomSchema.safeParse(req.body);
-    if (!parsedData.success) {
-        res.json({
-            message: "Incorrect inputs"
-        })
-        return;
-    }
+  const parsed = CreateRoomSchema.safeParse(req.body);
+  if (!parsed.success) return res.json({ message: "Incorrect inputs" });
 
-    const userId = req.userId;
-    if (!userId) {
-        return res.status(401).json({ message: "Unauthorized" });//the userId was showing undefined error so added this line.
-    }
-    const slug = String(Math.floor(1000 + Math.random()*9000));
-    try {
-        const room = await prismaClient.room.create({
-            data: {
-                slug,
-                adminId: userId
-            }
-        })
-        //return slug as an identifier
-        return res.json({ 
-            roomId: room.slug 
-        });
+  const userId = req.userId;
+  if (!userId) return res.status(401).json({ message: "Unauthorized" });
+
+  const slug = String(Math.floor(1000 + Math.random() * 9000));
+  try {
+    const room = await prismaClient.room.create({
+      data: {
+        slug,
+        adminId: userId
+      }
+    });
+    return res.json({ roomId: room.slug });
   } catch (e) {
-    return res.status(411).json({ 
-        message: "Room create failed"
-     });
+    return res.status(411).json({ message: "Room create failed" });
   }
 });
 
-app.get("/chats/:roomId", async (req, res) => {
-    try {
-        const roomId = Number(req.params.roomId);
-        console.log(req.params.roomId);
-        const messages = await prismaClient.chat.findMany({
-            where: {
-                roomId: roomId
-            },
-            orderBy: {
-                id: "desc"
-            },
-            take: 1000
-        });
+app.get("/my-rooms", middleware, async (req, res) => {
+  const userId = req.userId;
+  if (!userId) return res.status(401).json({ message: "Unauthorized" });
 
-        res.json({
-            messages
-        })
-    } catch(e) {
-        console.log(e);
-        res.json({
-            messages: []
-        })
-    }
-    
-})
+  const rooms = await prismaClient.room.findMany({
+    where: { adminId: userId },
+    select: { slug: true, createdAt: true }
+  });
+  res.json({ rooms });
+});
+
+app.get("/chats/:roomId", async (req, res) => {
+  const slug = req.params.roomId;
+  const room = await prismaClient.room.findUnique({ where: { slug } });
+  if (!room) return res.json({ messages: [] });
+  const messages = await prismaClient.chat.findMany({
+    where: { roomId: room.id },
+    orderBy: { id: "desc" },
+    take: 1000
+  });
+  res.json({ messages });
+});
 
 app.get("/room/:slug", async (req, res) => {
     const slug = req.params.slug;
