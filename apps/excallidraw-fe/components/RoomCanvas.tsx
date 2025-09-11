@@ -8,7 +8,8 @@ export function RoomCanvas({roomId}: {roomId: string}) {
     const [socket, setSocket] = useState<WebSocket | null>(null);
 
     useEffect(() => {
-        const ws = new WebSocket(`${WS_URL}?token=${"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJlOGE5Mjk5MS0wNGJhLTRkZjktOTYxZS1iYjY0NTFjZmRkNDgiLCJpYXQiOjE3NTc1MTEyODJ9.98DnXFXdpb-7u0iJKepfhXIMPMPcDouQo98vzd6z5gs"/*hardcoded token value*/}`)
+        const token = localStorage.getItem("token");
+        const ws = new WebSocket(`${WS_URL}?token=${encodeURIComponent(token || "")}`)
 
         ws.onopen = () => {
             setSocket(ws);
@@ -23,8 +24,8 @@ export function RoomCanvas({roomId}: {roomId: string}) {
     }, [])
    
     if (!socket) {
-        return <div>
-            connecting to server....
+        return <div className="flex items-center justify-center h-screen">
+            Wait For a Moment 
         </div>
     }
 

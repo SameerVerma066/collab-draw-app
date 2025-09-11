@@ -6,6 +6,7 @@ import { middleware } from "./middleware";
 import { CreateUserSchema, SigninSchema, CreateRoomSchema } from "@repo/common/types";
 import { prismaClient } from "@repo/db/client";
 import cors from "cors";
+import bcrypt from "bcrypt"
 
 const app = express();
 app.use(express.json());
@@ -16,22 +17,26 @@ app.post("/signup", async (req, res) => {
     const parsedData = CreateUserSchema.safeParse(req.body);
     if (!parsedData.success) {
         console.log(parsedData.error);
-        res.json({
+        return res.json({
             message: "Incorrect inputs"
         })
-        return;
+        
     }
     try {
+        const hashedPassword = await bcrypt.hash(parsedData.data.password,6);
         const user = await prismaClient.user.create({
             data: {
                 email: parsedData.data?.username,
                 // TODO: Hash the pw
-                password: parsedData.data.password,
+                password: hashedPassword,
                 name: parsedData.data.name
             }
         })
-        res.json({
+        const token = jwt.sign({
             userId: user.id
+        },JWT_SECRET)
+        res.json({
+            token
         })
     } catch(e) {
         res.status(411).json({
@@ -41,7 +46,9 @@ app.post("/signup", async (req, res) => {
 })
 
 app.post("/signin", async (req, res) => {
+    
     const parsedData = SigninSchema.safeParse(req.body);
+    
     if (!parsedData.success) {
         res.json({
             message: "Incorrect inputs"
@@ -50,16 +57,24 @@ app.post("/signin", async (req, res) => {
     }
 
     // TODO: Compare the hashed pws here
-    const user = await prismaClient.user.findFirst({
+    
+    const user = await prismaClient.user.findFirst(
+        {
         where: {
-            email: parsedData.data.username,
-            password: parsedData.data.password
+            email: parsedData.data.username
         }
     })
 
     if (!user) {
         res.status(403).json({
-            message: "Not authorized"
+            message: "Incorrect email or password"
+        })
+        return;
+    }
+    const comparePassword = await bcrypt.compare(parsedData.data.password, user?.password)
+    if(!comparePassword){
+        res.status(403).json({
+            message : "Incorrect email or password"
         })
         return;
     }
@@ -81,26 +96,29 @@ app.post("/room", middleware, async (req, res) => {
         })
         return;
     }
-    // @ts-ignore: TODO: Fix this
-    const userId = req.userId;
 
+    const userId = req.userId;
+    if (!userId) {
+        return res.status(401).json({ message: "Unauthorized" });//the userId was showing undefined error so added this line.
+    }
+    const slug = String(Math.floor(1000 + Math.random()*9000));
     try {
         const room = await prismaClient.room.create({
             data: {
-                slug: parsedData.data.name,
+                slug,
                 adminId: userId
             }
         })
-
-        res.json({
-            roomId: room.id
-        })
-    } catch(e) {
-        res.status(411).json({
-            message: "Room already exists with this name"
-        })
-    }
-})
+        //return slug as an identifier
+        return res.json({ 
+            roomId: room.slug 
+        });
+  } catch (e) {
+    return res.status(411).json({ 
+        message: "Room create failed"
+     });
+  }
+});
 
 app.get("/chats/:roomId", async (req, res) => {
     try {

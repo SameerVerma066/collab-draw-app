@@ -5,25 +5,33 @@ import axios from "axios";
 import { HTTP_BACKEND } from "@/config";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
+import Link from "next/link";
 
 export function AuthPage({ isSignin }: { isSignin: boolean; }) {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
+    const [name, setName] = useState(""); // ADD THIS
     const router = useRouter();
 
     const handleAuth = async () => {
         try {
             const endpoint = isSignin ? "signin" : "signup";
-            const response = await axios.post(`${HTTP_BACKEND}/${endpoint}`, {
-                email,
-                password
-            });
-            localStorage.setItem("token", response.data.token);
-            router.push("/Dashboard"); // Redirect to home page on success
-            toast.success(`Successfully ${isSignin ? "signed in" : "signed up"}`);
+            const payload = isSignin
+                ? { username: email, password }
+                : { username: email, password, name };
+
+            const { data } = await axios.post(`${HTTP_BACKEND}/${endpoint}`, payload);
+
+            if (isSignin) {
+                localStorage.setItem("token", data.token); // FIX: setItem
+                router.push("/Dashboard");
+                toast.success("Signed in");
+            } else {
+                toast.success("Signed up",data.token);
+                router.push("/Dashboard");
+            }
         } catch (e) {
-            console.error("Authentication failed", e);
-            toast.error("Authentication failed. Please check your credentials.");
+            toast.error("Authentication failed");
         }
     };
 
@@ -34,42 +42,38 @@ export function AuthPage({ isSignin }: { isSignin: boolean; }) {
                     {isSignin ? "Sign In" : "Sign Up"}
                 </h1>
                 <div className="space-y-4">
+                    {!isSignin && (
+                        <input
+                            type="text"
+                            placeholder="Name"
+                            value={name}
+                            onChange={(e) => setName(e.target.value)}
+                            className="w-full p-3 border border-gray-600 dark:border-gray-600 rounded-lg bg-gray-700 dark:bg-gray-700 text-white"
+                        />
+                    )}
                     <input
                         type="email"
                         placeholder="Email"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
-                        className="w-full p-3 border border-gray-600 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-700 dark:bg-gray-700 text-white dark:text-white placeholder-gray-400 dark:placeholder-gray-400"
+                        className="w-full p-3 border border-gray-600 dark:border-gray-600 rounded-lg bg-gray-700 dark:bg-gray-700 text-white"
                     />
                     <input
                         type="password"
                         placeholder="Password"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
-                        className="w-full p-3 border border-gray-600 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-700 dark:bg-gray-700 text-white dark:text-white placeholder-gray-400 dark:placeholder-gray-400"
+                        className="w-full p-3 border border-gray-600 dark:border-gray-600 rounded-lg bg-gray-700 dark:bg-gray-700 text-white"
                     />
                 </div>
-                <button
-                    onClick={handleAuth}
-                    className="w-full mt-6 py-3 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 transition-colors"
-                >
+                <button onClick={handleAuth} className="w-full mt-6 py-3 bg-blue-600 text-white font-semibold rounded-lg cursor-pointer">
                     {isSignin ? "Sign In" : "Sign Up"}
                 </button>
-                <div className="mt-4 text-center text-gray-400 dark:text-gray-400">
+                <div className="mt-4 text-center text-gray-400 dark:text-gray-400 ">
                     {isSignin ? (
-                        <span>
-                            Don't have an account?{" "}
-                            <a href="/signup" className="text-blue-500 hover:underline dark:text-blue-400">
-                                Sign up
-                            </a>
-                        </span>
+                        <span>Don't have an account? <Link href="/Signup" className="text-blue-500 cursor-pointer">Sign up</Link></span>
                     ) : (
-                        <span>
-                            Already have an account?{" "}
-                            <a href="/signin" className="text-blue-500 hover:underline dark:text-blue-400">
-                                Sign in
-                            </a>
-                        </span>
+                        <span>Already have an account? <Link href="/Signin" className="text-blue-500 cursor-pointer">Sign in</Link></span>
                     )}
                 </div>
             </div>
