@@ -1,0 +1,28 @@
+# Stage 1: Build
+FROM node:22-alpine AS builder
+
+WORKDIR /app
+
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY packages ./packages
+COPY apps/excallidraw-fe ./apps/excallidraw-fe
+
+RUN npm install -g pnpm
+RUN pnpm install --frozen-lockfile --workspace-root
+
+WORKDIR /app/apps/excallidraw-fe
+RUN pnpm run build
+
+# Stage 2: Production
+FROM node:22-alpine
+
+WORKDIR /app/apps/excallidraw-fe
+
+COPY --from=builder /app/apps/excallidraw-fe/package.json ./package.json
+COPY --from=builder /app/apps/excallidraw-fe/.next ./.next
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/apps/excallidraw-fe/public ./public
+
+EXPOSE 3001
+
+CMD ["pnpm", "run", "start"]
