@@ -21,3 +21,5 @@ jobs:
           file: ./docker/Dockerfile.websocket
           push: true
           tags: sameerv066/collab-draw-websocket:${{ github.sha }}
+        env:
+            DATABASE_URL: ${{ secrets.DATABASE_URL }}
