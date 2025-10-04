@@ -1,7 +1,9 @@
-# ---------- Builder ----------
+# ---------- Stage 1: Builder ----------
     FROM node:22-alpine AS builder
+
     WORKDIR /app
     
+    # Copy monorepo setup
     COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
     COPY packages ./packages
     COPY apps ./apps
@@ -9,22 +11,26 @@
     RUN npm install -g pnpm
     RUN pnpm install --frozen-lockfile --workspace-root
     
+    # ✅ Pass and set DATABASE_URL for Prisma generation
+    ARG DATABASE_URL
+    ENV DATABASE_URL=$DATABASE_URL
+    
     # ✅ Generate Prisma client
     RUN pnpm --filter @repo/db prisma generate
     
-    # ✅ Build websocket backend
+    # ✅ Build WebSocket backend (make sure a "build" script exists in its package.json)
     RUN pnpm --filter @repo/ws-backend run build
     
     
-    # ---------- Runner ----------
+    # ---------- Stage 2: Runner ----------
     FROM node:22-alpine AS runner
     WORKDIR /app
     
-    # Copy app dist output
+    # ✅ Copy build output from builder
     COPY --from=builder /app/apps/ws-backend/dist ./dist
     COPY --from=builder /app/apps/ws-backend/package.json ./
     
-    # ✅ Copy prisma client + deps
+    # ✅ Copy dependencies and Prisma client
     COPY --from=builder /app/node_modules ./node_modules
     COPY --from=builder /app/packages/db/node_modules/.prisma ./node_modules/.prisma
     

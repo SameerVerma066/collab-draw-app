@@ -9,6 +9,10 @@
     RUN npm install -g pnpm
     RUN pnpm install --frozen-lockfile --workspace-root
     
+    # ✅ Make sure DATABASE_URL is available
+    ARG DATABASE_URL
+    ENV DATABASE_URL=$DATABASE_URL
+    
     # ✅ Generate Prisma client
     RUN pnpm --filter @repo/db prisma generate
     
@@ -20,7 +24,6 @@
     FROM node:22-alpine AS runner
     WORKDIR /app
     
-    # Copy only needed app files
     COPY --from=builder /app/apps/http-backend/dist ./dist
     COPY --from=builder /app/apps/http-backend/package.json ./
     
