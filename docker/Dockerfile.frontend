@@ -10,6 +10,9 @@ COPY apps/excallidraw-fe ./apps/excallidraw-fe
 RUN npm install -g pnpm
 RUN pnpm install --frozen-lockfile --workspace-root
 
+# ✅ Generate Prisma client
+RUN pnpm db:generate
+
 WORKDIR /app/apps/excallidraw-fe
 RUN pnpm run build
 
