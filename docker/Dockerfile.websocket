@@ -1,40 +1,33 @@
-# ---------- Stage 1: Builder ----------
-    FROM node:22-alpine AS builder
+# ========== BUILDER STAGE ==========
+FROM node:20-alpine AS builder
+WORKDIR /app
 
-    WORKDIR /app
-    
-    # Copy monorepo setup
-    COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
-    COPY packages ./packages
-    COPY apps ./apps
-    
-    RUN npm install -g pnpm
-    RUN pnpm install --frozen-lockfile --workspace-root
-    
-    # ✅ Pass and set DATABASE_URL for Prisma generation
-    ARG DATABASE_URL
-    ENV DATABASE_URL=$DATABASE_URL
-    
-    # ✅ Generate Prisma client
-    RUN pnpm --filter @repo/db prisma generate
-    
-    # ✅ Build WebSocket backend (make sure a "build" script exists in its package.json)
-    RUN pnpm --filter @repo/ws-backend run build
-    
-    
-    # ---------- Stage 2: Runner ----------
-    FROM node:22-alpine AS runner
-    WORKDIR /app
-    
-    # ✅ Copy build output from builder
-    COPY --from=builder /app/apps/ws-backend/dist ./dist
-    COPY --from=builder /app/apps/ws-backend/package.json ./
-    
-    # ✅ Copy dependencies and Prisma client
-    COPY --from=builder /app/node_modules ./node_modules
-    COPY --from=builder /app/packages/db/node_modules/.prisma ./node_modules/.prisma
-    
-    EXPOSE 8080
-    
-    CMD ["node", "dist/index.js"]
-    
+RUN npm install -g pnpm
+
+# Copy workspace setup
+COPY pnpm-lock.yaml pnpm-workspace.yaml turbo.json ./
+COPY package.json ./
+
+# Copy app and packages
+COPY apps/ws-backend ./apps/ws-backend
+COPY packages ./packages
+
+# Install dependencies
+RUN pnpm install --frozen-lockfile
+
+# Build websocket (includes Prisma generate automatically)
+RUN pnpm build:websocket
+
+# ========== RUNNER STAGE ==========
+FROM node:20-alpine AS runner
+WORKDIR /app
+ENV NODE_ENV=production
+
+# Copy necessary files
+COPY --from=builder /app/apps/ws-backend/dist ./dist
+COPY --from=builder /app/apps/ws-backend/package.json ./package.json
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/packages/generated/prisma ./packages/generated/prisma
+
+EXPOSE 5000
+CMD ["node", "dist/index.js"]
