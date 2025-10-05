@@ -5,7 +5,7 @@ RUN npm install -g pnpm
 
 COPY pnpm-lock.yaml pnpm-workspace.yaml turbo.json ./
 COPY package.json ./
-COPY apps/excalidraw-fe ./apps/excalidraw-fe
+COPY apps/excallidraw-fe ./apps/excallidraw-fe
 COPY packages ./packages
 
 RUN pnpm install --frozen-lockfile
@@ -16,9 +16,9 @@ FROM node:20-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 
-COPY --from=builder /app/apps/excalidraw-fe/.next ./.next
-COPY --from=builder /app/apps/excalidraw-fe/public ./public
-COPY --from=builder /app/apps/excalidraw-fe/package.json ./package.json
+COPY --from=builder /app/apps/excallidraw-fe/.next ./.next
+COPY --from=builder /app/apps/excallidraw-fe/public ./public
+COPY --from=builder /app/apps/excallidraw-fe/package.json ./package.json
 COPY --from=builder /app/node_modules ./node_modules
 
 EXPOSE 3000
