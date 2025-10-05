@@ -1,21 +1,29 @@
-name: CD Websocket
+name: CD WebSocket
 
 on:
   push:
-    branches: [ main ]
+    branches:
+      - main
+
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout the code
-        uses: actions/checkout@v2
-      - name: Docker login
-        uses: docker/login-action@v2
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to DockerHub
+        uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }} 
-      - name: Build and push
-        uses: docker/build-push-action@v4
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push WebSocket image
+        uses: docker/build-push-action@v5
         with:
           context: .
           file: ./docker/Dockerfile.websocket
@@ -23,3 +31,6 @@ jobs:
           tags: sameerv066/collab-draw-websocket:${{ github.sha }}
           build-args: |
             DATABASE_URL=${{ secrets.DATABASE_URL }}
+
+      - name: Image digest
+        run: echo "Image pushed: sameerv066/collab-draw-websocket:${{ github.sha }}"
